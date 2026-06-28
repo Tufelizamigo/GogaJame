@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Goga And Jame</title>
+<title>Our Sibling Adventure Checklist</title>
 <!-- ============================================================
      FIREBASE SETUP  (this is what lets you + your sister share)
      1. Make a free project at https://console.firebase.google.com
@@ -211,13 +211,32 @@
     width: fit-content;
   }
   .timer.low { color: #ef4444; background: #fee2e2; }
+  .online-box {
+    background: #fff;
+    border-radius: 16px;
+    padding: 14px 16px;
+    margin-top: 20px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+  }
+  .online-title { font-weight: 600; font-size: 14px; color: #16a34a; margin-bottom: 8px; }
+  .online-list { display: flex; flex-wrap: wrap; gap: 8px; }
+  .online-chip {
+    background: #dcfce7;
+    color: #166534;
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .online-empty { color: #9ca3af; font-size: 13px; }
 </style>
 </head>
 <body class="locked">
 <div id="lock">
   <div class="lock-card">
     <h2>🔒 GOGA & JAME</h2>
-    <p>Enter the password to open the list</p>
+    <p>Enter your name and the password</p>
+    <input type="text" id="nameInput" placeholder="Your name" autocomplete="off" maxlength="20">
     <input type="password" id="pwInput" placeholder="Password" autocomplete="off">
     <button id="pwBtn">Unlock</button>
     <div class="lock-error" id="pwError"></div>
@@ -238,14 +257,19 @@
 
   <div id="list"></div>
 
+  <div class="online-box" id="onlineBox">
+    <div class="online-title">🟢 Online now</div>
+    <div class="online-list" id="onlineList">…</div>
+  </div>
+
   <footer>Tap a name to see the details · Tap the box to check it off</footer>
 </div>
 
 <script>
 /* ============================================================
-   PASSWORD + x-MINUTE SESSION
+   PASSWORD + 30-MINUTE SESSION
    - Change the password on the next line.
-   - After unlocking, the page stays open for x minutes,
+   - After unlocking, the page stays open for 30 minutes,
      then locks again and asks for the password.
    ============================================================ */
 const PASSWORD = "gogajame2026";      // 👈 change this to your secret password
@@ -254,9 +278,15 @@ const SESSION_MINUTES = 10;
 (function setupLock() {
   const lock = document.getElementById('lock');
   const input = document.getElementById('pwInput');
+  const nameInput = document.getElementById('nameInput');
   const btn = document.getElementById('pwBtn');
   const errEl = document.getElementById('pwError');
   const KEY = 'gogaUnlockUntil';
+  const NAME_KEY = 'gogaUserName';
+
+  // Pre-fill name if they've used it before
+  const savedName = localStorage.getItem(NAME_KEY);
+  if (savedName) nameInput.value = savedName;
 
   function unlockedNow() {
     const until = parseInt(localStorage.getItem(KEY) || '0', 10);
@@ -266,10 +296,17 @@ const SESSION_MINUTES = 10;
   function openApp() {
     lock.style.display = 'none';
     document.body.classList.remove('locked');
+    if (window.goOnline) {
+      window.goOnline();
+    } else {
+      // goOnline defined later in the page; call once ready
+      window.addEventListener('load', () => { if (window.goOnline) window.goOnline(); });
+    }
   }
 
   function lockApp() {
     if (tickTimer) clearInterval(tickTimer);
+    if (window.goOffline) window.goOffline();
     localStorage.removeItem(KEY);
     lock.style.display = 'flex';
     document.body.classList.add('locked');
@@ -314,8 +351,16 @@ const SESSION_MINUTES = 10;
   }
 
   function tryUnlock() {
+    const name = nameInput.value.trim();
+    if (!name) {
+      errEl.textContent = 'Please enter your name';
+      nameInput.focus();
+      return;
+    }
     if (input.value === PASSWORD) {
       errEl.textContent = '';
+      localStorage.setItem(NAME_KEY, name);
+      window.currentUserName = name;
       startSession();
     } else {
       errEl.textContent = 'Wrong password, try again';
@@ -326,14 +371,16 @@ const SESSION_MINUTES = 10;
 
   btn.addEventListener('click', tryUnlock);
   input.addEventListener('keydown', (e) => { if (e.key === 'Enter') tryUnlock(); });
+  nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') input.focus(); });
 
   // If still within an active session, skip the lock screen
   if (unlockedNow()) {
     const until = parseInt(localStorage.getItem(KEY), 10);
+    window.currentUserName = localStorage.getItem(NAME_KEY) || 'Someone';
     openApp();
     scheduleLock(until);
   } else {
-    input.focus();
+    if (savedName) input.focus(); else nameInput.focus();
   }
 })();
 
@@ -539,6 +586,8 @@ try { saved = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch (e) {
 
 let db = null;          // Firebase database ref (null until set up)
 let progressRef = null;
+let presenceRef = null;
+let myPresenceRef = null;
 let firebaseReady = false;
 
 // Only start Firebase if a real config was pasted in
@@ -547,11 +596,53 @@ if (typeof firebaseConfig !== 'undefined' && firebaseConfig.apiKey && firebaseCo
     firebase.initializeApp(firebaseConfig);
     db = firebase.database();
     progressRef = db.ref('sharedProgress');
+    presenceRef = db.ref('onlineUsers');
     firebaseReady = true;
   } catch (e) {
     console.warn('Firebase init failed, using offline mode:', e);
   }
 }
+
+// ---- Online users (presence) ----
+function renderOnline(users) {
+  const listEl = document.getElementById('onlineList');
+  if (!listEl) return;
+  const names = users ? Object.values(users).map(u => (u && u.name) ? u.name : 'Someone') : [];
+  if (names.length === 0) {
+    listEl.innerHTML = '<span class="online-empty">No one else right now</span>';
+    return;
+  }
+  listEl.innerHTML = names
+    .map(n => '<span class="online-chip">' + String(n).replace(/[<>&]/g, '') + '</span>')
+    .join('');
+}
+
+// Called when a user unlocks the page
+window.goOnline = function () {
+  if (!firebaseReady || !presenceRef) {
+    // Offline fallback: just show yourself
+    renderOnline({ me: { name: window.currentUserName || 'You' } });
+    return;
+  }
+  // Unique id for this browser tab
+  myPresenceRef = presenceRef.push();
+  myPresenceRef.set({ name: window.currentUserName || 'Someone', t: Date.now() });
+  // Auto-remove me if the tab closes or disconnects
+  myPresenceRef.onDisconnect().remove();
+  // Listen for the live list of who's online
+  presenceRef.on('value', (snap) => renderOnline(snap.val()));
+};
+
+// Called when the session locks
+window.goOffline = function () {
+  if (myPresenceRef) {
+    myPresenceRef.remove();
+    myPresenceRef = null;
+  }
+};
+
+// Also remove presence if the tab is closed normally
+window.addEventListener('beforeunload', () => { if (window.goOffline) window.goOffline(); });
 
 function saveState() {
   // Always keep a local copy as backup
