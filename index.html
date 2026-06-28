@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Our Sibling Adventure Checklist</title>
+<!-- ============================================================
+     FIREBASE SETUP  (this is what lets you + your sister share)
+     1. Make a free project at https://console.firebase.google.com
+     2. Create a Realtime Database (start in TEST mode)
+     3. Add a Web App, copy its config, and paste it below
+        replacing the placeholder values.
+     ============================================================ -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script>
+  // 👇 PASTE YOUR OWN CONFIG HERE (replace everything inside the {})
+  const firebaseConfig = {
+    apiKey: "AIzaSyBtzqk_J1E-d3sp9ViJm2iwnRSsfb6xIZQ",
+    authDomain: "goga-and-jame.firebaseapp.com",
+    databaseURL: "https://goga-and-jame-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "goga-and-jame",
+    storageBucket: "goga-and-jame.firebasestorage.app",
+    messagingSenderId: "932748430326",
+    appId: "1:932748430326:web:a6c56ecd5a010b301895d7",
+    measurementId: "G-W3J0YPS2DV"
+  };
+</script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: linear-gradient(160deg, #f0f4ff 0%, #fce7f3 100%);
+    min-height: 100vh;
+    padding: 20px;
+    color: #1f2937;
+  }
+  .wrap { max-width: 640px; margin: 0 auto; }
+  header {
+    text-align: center;
+    margin-bottom: 8px;
+  }
+  h1 {
+    font-size: 28px;
+    color: #4f46e5;
+    margin-bottom: 4px;
+  }
+  .sub { color: #6b7280; font-size: 14px; margin-bottom: 20px; }
+  .progress-bar {
+    background: #e5e7eb;
+    border-radius: 20px;
+    height: 14px;
+    overflow: hidden;
+    margin-bottom: 4px;
+  }
+  .progress-fill {
+    background: linear-gradient(90deg, #6366f1, #ec4899);
+    height: 100%;
+    width: 0%;
+    border-radius: 20px;
+    transition: width 0.4s ease;
+  }
+  .progress-text {
+    text-align: center;
+    font-size: 13px;
+    color: #6b7280;
+    margin-bottom: 24px;
+  }
+  .card {
+    background: #fff;
+    border-radius: 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    overflow: hidden;
+    transition: box-shadow 0.2s;
+  }
+  .card:hover { box-shadow: 0 4px 18px rgba(0,0,0,0.1); }
+  .card-head {
+    display: flex;
+    align-items: center;
+    padding: 16px;
+    cursor: pointer;
+    gap: 12px;
+  }
+  .check {
+    width: 26px; height: 26px;
+    border: 2px solid #c7d2fe;
+    border-radius: 8px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff;
+    cursor: pointer;
+    font-size: 16px;
+    color: #fff;
+    transition: all 0.2s;
+  }
+  .check.done {
+    background: #6366f1;
+    border-color: #6366f1;
+  }
+  .icon { font-size: 24px; flex-shrink: 0; }
+  .title-area { flex: 1; }
+  .name { font-weight: 600; font-size: 16px; }
+  .name.done { text-decoration: line-through; color: #9ca3af; }
+  .tag { font-size: 12px; color: #6b7280; }
+  .arrow { color: #9ca3af; transition: transform 0.25s; font-size: 14px; }
+  .arrow.open { transform: rotate(180deg); }
+  .details {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+    background: #f9fafb;
+  }
+  .details-inner { padding: 0 16px 16px 16px; }
+  .detail-row {
+    display: flex;
+    gap: 8px;
+    padding: 8px 0;
+    border-top: 1px solid #f0f0f0;
+    font-size: 14px;
+  }
+  .detail-row:first-child { border-top: none; }
+  .detail-label { color: #9ca3af; min-width: 70px; }
+  .detail-val { color: #374151; flex: 1; }
+  .desc { font-size: 14px; color: #4b5563; padding: 10px 0; line-height: 1.5; }
+  .stars { color: #f59e0b; }
+  .go-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 14px;
+    padding: 10px 18px;
+    background: linear-gradient(90deg, #6366f1, #ec4899);
+    color: #fff;
+    text-decoration: none;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 14px;
+    box-shadow: 0 2px 8px rgba(99,102,241,0.3);
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .go-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 14px rgba(236,72,153,0.4); }
+  .go-btn:active { transform: translateY(0); }
+  footer { text-align: center; margin-top: 20px; color: #9ca3af; font-size: 12px; }
+  .celebrate {
+    text-align: center;
+    background: #fff;
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 16px;
+    display: none;
+    font-weight: 600;
+    color: #ec4899;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>😛 GOGA AND JAME TIME</h1>
+    <div class="sub">Jame (singular) GOGAAAAA · Singapore 🇸🇬</div>
+  </header>
+
+  <div class="progress-bar"><div class="progress-fill" id="fill"></div></div>
+  <div class="progress-text" id="ptext">0 done</div>
+
+  <div class="celebrate" id="celebrate">🎉 YAY WE DO EVERYTHING YAYYYYYYYY GAHHH  ! 🎉</div>
+
+  <div id="list"></div>
+
+  <footer>Tap a name to see the details · Tap the box to check it off</footer>
+</div>
+
+<script>
+const activities = [
+  {
+    icon: "🎢", name: "Universal Studios Singapore", tag: "Theme Park · Sentosa",
+    rating: 4.7, desc: "The big one! Rides, shows and movie-themed zones. Battlestar Galactica and Transformers are must-rides for thrill lovers.",
+    address: "8 Sentosa Gateway, Resorts World Sentosa",
+    hours: "Usually 10am – 7pm (check the day you go)",
+    price: "~$83 SGD per adult ticket",
+    tip: "Buy tickets online first, and download the RWS app to see ride wait times.",
+    maps: "Universal Studios Singapore"
+  },
+  {
+    icon: "🏎️", name: "The Karting Arena (Jurong)", tag: "Go-Karting",
+    rating: 4.5, desc: "Indoor electric go-karts. Race your sis and see who's faster! Beginner friendly.",
+    address: "60 Jurong Port Road, Level 5",
+    hours: "Around 11am – 10pm",
+    price: "~$30–45 SGD per race session",
+    tip: "Min height around 1.3m — fine for most. Closed-toe shoes only.",
+    maps: "The Karting Arena Jurong Port Road Singapore"
+  },
+  {
+    icon: "🏎️", name: "KF1 Karting Circuit (Kranji)", tag: "Outdoor Karting",
+    rating: 4.4, desc: "Singapore's outdoor karting track. Longer circuit, faster feel. A fun second karting spot if you love the first one.",
+    address: "2 Turf Club Avenue, Kranji",
+    hours: "Around 12pm – 11pm",
+    price: "~$35–50 SGD per session",
+    tip: "Outdoors, so check the weather before going.",
+    maps: "KF1 Karting Circuit Kranji Singapore"
+  },
+  {
+    icon: "🚵", name: "Chestnut Nature Park (Bike Trails)", tag: "Mountain Bike Track",
+    rating: 4.6, desc: "Singapore's biggest mountain biking trail with easy, medium and hard loops. Pick the easy loop to start together.",
+    address: "Chestnut Avenue (North entrance)",
+    hours: "7am – 7pm",
+    price: "Free to enter · Bike rental ~$15–25/hr nearby",
+    tip: "Go in the morning before it gets hot. Bring lots of water.",
+    maps: "Chestnut Nature Park Singapore"
+  },
+  {
+    icon: "🚴", name: "East Coast Park Cycling", tag: "Bike Track · Coast",
+    rating: 4.7, desc: "Flat, breezy coastal cycling path right by the sea. Easy and chill — perfect for riding side by side.",
+    address: "East Coast Park Service Road",
+    hours: "Open 24 hours",
+    price: "Free · Bike rental ~$8–12/hr",
+    tip: "Stop for snacks at the food centres along the way.",
+    maps: "East Coast Park Cycling Singapore"
+  },
+  {
+    icon: "🚲", name: "Pulau Ubin Bike Adventure", tag: "Island Bike Trails",
+    rating: 4.8, desc: "Take a short boat to a rustic island and explore dirt trails, mangroves and wildlife on rented bikes. A whole-day adventure!",
+    address: "Changi Point Ferry Terminal (take bumboat)",
+    hours: "Daytime (catch a ferry back before dark)",
+    price: "Boat ~$4 each way · Bike rental ~$10–15/day",
+    tip: "Bring cash — many shops there don't take cards.",
+    maps: "Changi Point Ferry Terminal Singapore"
+  },
+  {
+    icon: "🎡", name: "Sentosa Island Day", tag: "Beaches & Fun",
+    rating: 4.6, desc: "Beaches, the luge ride, cable car and lots more — easy to combine with Universal since they're in the same place.",
+    address: "Sentosa Island",
+    hours: "All day",
+    price: "Free entry · Rides priced separately",
+    tip: "The Skyline Luge is super fun and not too pricey.",
+    maps: "Sentosa Island Singapore"
+  },
+  {
+    icon: "🌳", name: "Gardens by the Bay", tag: "Gardens · Supertrees",
+    rating: 4.8, desc: "Giant futuristic gardens with the Cloud Forest and Flower Dome, plus the towering Supertrees you can walk up high on.",
+    address: "18 Marina Gardens Drive",
+    hours: "9am – 9pm",
+    price: "Outdoor free · Domes ~$28 SGD",
+    tip: "The outdoor Supertree Grove is free to wander around.",
+    maps: "Gardens by the Bay Singapore"
+  },
+  {
+    icon: "🎳", name: "K Bowling Club (Somerset)", tag: "Bowling · 313@Somerset",
+    rating: 4.5, desc: "Cosmic neon bowling right at 313@Somerset, with arcade, darts and pool too. Easy competitive fun for two siblings.",
+    address: "313 Orchard Road, #03-27, 313@Somerset",
+    hours: "Sun–Fri 10am–3am · Sat 10am–4am",
+    price: "~$8–12 SGD per game + $2 shoe rental",
+    tip: "It's cold inside — bring a jacket, and socks for the shoes.",
+    maps: "K Bowling Club 313 Somerset Singapore"
+  },
+  {
+    icon: "🍜", name: "Food Republic (313@Somerset)", tag: "Food Court",
+    rating: 4.4, desc: "Big food court at 313@Somerset with loads of local dishes under one roof — chicken rice, laksa, noodles and more.",
+    address: "313 Orchard Road, Level 5, 313@Somerset",
+    hours: "~10am – 10pm",
+    price: "~$6–10 SGD per dish",
+    tip: "Try a few different stalls and share so you taste more.",
+    maps: "Food Republic 313 Somerset Singapore"
+  },
+  {
+    icon: "🎮", name: "Timezone (Somerset)", tag: "Arcade · 313@Somerset",
+    rating: 4.4, desc: "Claw machines, racing games and rhythm games. Win each other a prize!",
+    address: "313 Orchard Road, 313@Somerset",
+    hours: "Mall hours, ~11am – 10pm",
+    price: "Pay as you play with a game card",
+    tip: "Buy a value card so each game is cheaper.",
+    maps: "Timezone 313 Somerset Singapore"
+  },
+  {
+    icon: "📸", name: "Life4Cuts", tag: "Photo Booth",
+    rating: 4.7, desc: "Korean-style self photo booth — pile in, pick a frame, pull silly poses and walk out with cute printed photo strips.",
+    address: "Several outlets (Orchard / Somerset area)",
+    hours: "~11am – 10pm",
+    price: "~$10–16 SGD per session",
+    tip: "Plan your poses before the timer starts — it goes fast!",
+    maps: "Life4Cuts photo booth Singapore"
+  },
+  {
+    icon: "🎹", name: "Piano @ Suntec City", tag: "Public Piano",
+    rating: 4.5, desc: "Play the public piano at Suntec City — show off a tune or just have a laugh together in front of the fountain area.",
+    address: "Suntec City Mall",
+    hours: "Mall hours, ~10am – 10pm",
+    price: "Free",
+    tip: "Visit the Fountain of Wealth nearby while you're there.",
+    maps: "Suntec City Mall Singapore"
+  },
+  {
+    icon: "🛶", name: "Singapore River Cruise", tag: "Boat Ride",
+    rating: 4.6, desc: "A relaxing bumboat ride past Clarke Quay, Marina Bay and all the lit-up landmarks. Best near sunset.",
+    address: "Clarke Quay Jetty",
+    hours: "~9am – 10:30pm",
+    price: "~$28 SGD per adult",
+    tip: "Go around sunset so you catch day and night views.",
+    maps: "Singapore River Cruise Clarke Quay"
+  },
+  {
+    icon: "🐬", name: "S.E.A. Aquarium", tag: "Aquarium · Sentosa",
+    rating: 4.6, desc: "One of the world's biggest aquariums — sharks, rays and a huge ocean tank you can sit and stare at. Pairs well with a Sentosa day.",
+    address: "8 Sentosa Gateway, Resorts World Sentosa",
+    hours: "~10am – 5pm",
+    price: "~$44 SGD per adult",
+    tip: "Buy a combo ticket if you're also doing Universal.",
+    maps: "SEA Aquarium Sentosa Singapore"
+  },
+  {
+    icon: "🌃", name: "Marina Bay Sands SkyPark", tag: "Viewpoint",
+    rating: 4.5, desc: "Head up to the observation deck for the best view over the whole city skyline. Amazing at night.",
+    address: "10 Bayfront Avenue",
+    hours: "~11am – 9pm",
+    price: "~$32 SGD per adult",
+    tip: "Sunset is the sweet spot — city lights start turning on.",
+    maps: "Marina Bay Sands SkyPark Singapore"
+  },
+  {
+    icon: "🛍️", name: "Bugis Street Shopping", tag: "Street Market",
+    rating: 4.4, desc: "Maze of cheap stalls — clothes, accessories, snacks and random fun finds. Great for bargain hunting together.",
+    address: "Bugis Street, 3 New Bugis Street",
+    hours: "~11am – 10pm",
+    price: "Free to browse · cheap buys",
+    tip: "Prices are low already, but you can still try to haggle a little.",
+    maps: "Bugis Street Singapore"
+  },
+  {
+    icon: "🎢", name: "Skyline Luge Sentosa", tag: "Ride · Sentosa",
+    rating: 4.7, desc: "Zoom down a winding track on a little luge cart, then ride the skylift back up for the view. Race each other down!",
+    address: "45 Siloso Beach Walk, Sentosa",
+    hours: "~10am – 9:30pm",
+    price: "~$28 SGD for multiple rides",
+    tip: "Get the multi-ride pass — one go is never enough.",
+    maps: "Skyline Luge Sentosa Singapore"
+  },
+  {
+    icon: "🦁", name: "Singapore Zoo / Night Safari", tag: "Wildlife",
+    rating: 4.7, desc: "World-famous open-concept zoo. Go in the day for the zoo, or evening for the Night Safari tram through nocturnal animal habitats.",
+    address: "80 Mandai Lake Road",
+    hours: "Zoo ~8:30am–6pm · Night Safari ~7:15pm–12am",
+    price: "~$48 SGD zoo · ~$56 SGD night safari",
+    tip: "Don't try to do both in one day — pick one and enjoy it fully.",
+    maps: "Singapore Zoo Mandai"
+  },
+  {
+    icon: "🛝", name: "Jewel Changi Rain Vortex", tag: "Attraction",
+    rating: 4.8, desc: "The giant indoor waterfall at the airport, surrounded by a jungle. There's also a fun canopy maze and bouncing nets up top.",
+    address: "78 Airport Boulevard, Jewel Changi Airport",
+    hours: "Mall ~10am – 10pm · waterfall shows at night",
+    price: "Free to see · Canopy Park ~$8 SGD",
+    tip: "Catch the light & sound show at the waterfall after dark.",
+    maps: "Jewel Changi Airport Singapore"
+  },
+  {
+    icon: "📸", name: "Photo Memory Mission", tag: "Keepsake",
+    rating: 5.0, desc: "Take one silly photo at every place we visit, then make a little instagram story at the end.",
+    address: "Every location we go",
+    hours: "Anytime",
+    price: "Free",
+    tip: "Be super silly.",
+    maps: ""
+  }
+];
+
+const list = document.getElementById('list');
+const state = {};
+
+// ---- Storage layer: Firebase (shared) with localStorage fallback ----
+const STORAGE_KEY = 'siblingAdventureProgress';
+let saved = {};
+try { saved = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch (e) { saved = {}; }
+
+let db = null;          // Firebase database ref (null until set up)
+let progressRef = null;
+let firebaseReady = false;
+
+// Only start Firebase if a real config was pasted in
+if (typeof firebaseConfig !== 'undefined' && firebaseConfig.apiKey && firebaseConfig.apiKey.indexOf('PASTE') === -1) {
+  try {
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.database();
+    progressRef = db.ref('sharedProgress');
+    firebaseReady = true;
+  } catch (e) {
+    console.warn('Firebase init failed, using offline mode:', e);
+  }
+}
+
+function saveState() {
+  // Always keep a local copy as backup
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+  // Push to the shared cloud list if connected
+  if (firebaseReady && progressRef) {
+    progressRef.set(state).catch(err => console.warn('Cloud save failed:', err));
+  }
+}
+
+function stars(r) {
+  const full = Math.round(r);
+  return "★".repeat(full) + "☆".repeat(5 - full);
+}
+
+activities.forEach((a, i) => {
+  state[i] = !!saved[i];
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.innerHTML = `
+    <div class="card-head">
+      <div class="check ${state[i] ? 'done' : ''}" data-check="${i}">${state[i] ? '✓' : ''}</div>
+      <div class="icon">${a.icon}</div>
+      <div class="title-area" data-toggle="${i}">
+        <div class="name ${state[i] ? 'done' : ''}" id="name-${i}">${a.name}</div>
+        <div class="tag">${a.tag}</div>
+      </div>
+      <div class="arrow" id="arrow-${i}" data-toggle="${i}">▼</div>
+    </div>
+    <div class="details" id="details-${i}">
+      <div class="details-inner">
+        <div class="desc">${a.desc}</div>
+        <div class="detail-row"><span class="detail-label">Rating</span><span class="detail-val"><span class="stars">${stars(a.rating)}</span> ${a.rating}</span></div>
+        <div class="detail-row"><span class="detail-label">Address</span><span class="detail-val">${a.address}</span></div>
+        <div class="detail-row"><span class="detail-label">Hours</span><span class="detail-val">${a.hours}</span></div>
+        <div class="detail-row"><span class="detail-label">Price</span><span class="detail-val">${a.price}</span></div>
+        <div class="detail-row"><span class="detail-label">💡 Tip</span><span class="detail-val">${a.tip}</span></div>
+        ${a.maps ? `<a class="go-btn" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(a.maps)}" target="_blank" rel="noopener">📍 Go Now</a>` : ''}
+      </div>
+    </div>
+  `;
+  list.appendChild(card);
+});
+
+document.getElementById('ptext').textContent = '0 of ' + activities.length + ' done';
+updateProgress();
+
+// Apply a state object to the on-screen boxes (used for live cloud updates)
+function applyState(newState) {
+  activities.forEach((a, i) => {
+    const on = !!(newState && newState[i]);
+    state[i] = on;
+    const box = document.querySelector('[data-check="' + i + '"]');
+    const name = document.getElementById('name-' + i);
+    if (box) { box.classList.toggle('done', on); box.textContent = on ? '✓' : ''; }
+    if (name) { name.classList.toggle('done', on); }
+  });
+  updateProgress();
+}
+
+// Listen for live changes from the shared cloud list (your sister's taps show up here)
+if (firebaseReady && progressRef) {
+  progressRef.on('value', (snap) => {
+    const cloud = snap.val();
+    if (cloud) { applyState(cloud); }
+  });
+}
+
+function toggleDetails(i) {
+  const d = document.getElementById('details-' + i);
+  const arrow = document.getElementById('arrow-' + i);
+  if (d.style.maxHeight && d.style.maxHeight !== '0px') {
+    d.style.maxHeight = '0px';
+    arrow.classList.remove('open');
+  } else {
+    d.style.maxHeight = d.scrollHeight + 'px';
+    arrow.classList.add('open');
+  }
+}
+
+function toggleCheck(i) {
+  state[i] = !state[i];
+  const box = document.querySelector('[data-check="' + i + '"]');
+  const name = document.getElementById('name-' + i);
+  box.classList.toggle('done', state[i]);
+  box.textContent = state[i] ? '✓' : '';
+  name.classList.toggle('done', state[i]);
+  saveState();
+  updateProgress();
+}
+
+function updateProgress() {
+  const done = Object.values(state).filter(Boolean).length;
+  const total = activities.length;
+  const pct = Math.round(done / total * 100);
+  document.getElementById('fill').style.width = pct + '%';
+  document.getElementById('ptext').textContent = done + ' of ' + total + ' done';
+  document.getElementById('celebrate').style.display = (done === total) ? 'block' : 'none';
+}
+
+document.addEventListener('click', (e) => {
+  const checkEl = e.target.closest('[data-check]');
+  const toggleEl = e.target.closest('[data-toggle]');
+  if (checkEl) { toggleCheck(checkEl.dataset.check); return; }
+  if (toggleEl) { toggleDetails(toggleEl.dataset.toggle); }
+});
+</script>
+</body>
+</html>
