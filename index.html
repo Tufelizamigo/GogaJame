@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Our Sibling Adventure Checklist</title>
+<title>Goga And Jame</title>
 <!-- ============================================================
      FIREBASE SETUP  (this is what lets you + your sister share)
      1. Make a free project at https://console.firebase.google.com
@@ -154,14 +154,82 @@
     font-weight: 600;
     color: #ec4899;
   }
+  /* ---- Lock screen ---- */
+  #lock {
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(160deg, #4f46e5 0%, #ec4899 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 20px;
+  }
+  .lock-card {
+    background: #fff;
+    border-radius: 20px;
+    padding: 28px 24px;
+    width: 100%;
+    max-width: 340px;
+    text-align: center;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.25);
+  }
+  .lock-card h2 { color: #4f46e5; margin-bottom: 6px; font-size: 22px; }
+  .lock-card p { color: #6b7280; font-size: 13px; margin-bottom: 18px; }
+  .lock-card input {
+    width: 100%;
+    padding: 12px 14px;
+    border: 2px solid #c7d2fe;
+    border-radius: 12px;
+    font-size: 16px;
+    margin-bottom: 12px;
+    outline: none;
+  }
+  .lock-card input:focus { border-color: #6366f1; }
+  .lock-card button {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 12px;
+    background: linear-gradient(90deg, #6366f1, #ec4899);
+    color: #fff;
+    font-weight: 600;
+    font-size: 16px;
+    cursor: pointer;
+  }
+  .lock-error { color: #ef4444; font-size: 13px; margin-top: 10px; min-height: 16px; }
+  body.locked { overflow: hidden; }
+  .timer {
+    text-align: center;
+    font-size: 13px;
+    font-weight: 600;
+    color: #6366f1;
+    background: #eef2ff;
+    border-radius: 20px;
+    padding: 6px 12px;
+    margin: 0 auto 16px auto;
+    width: fit-content;
+  }
+  .timer.low { color: #ef4444; background: #fee2e2; }
 </style>
 </head>
-<body>
+<body class="locked">
+<div id="lock">
+  <div class="lock-card">
+    <h2>🔒 GOGA & JAME</h2>
+    <p>Enter the password to open the list</p>
+    <input type="password" id="pwInput" placeholder="Password" autocomplete="off">
+    <button id="pwBtn">Unlock</button>
+    <div class="lock-error" id="pwError"></div>
+  </div>
+</div>
 <div class="wrap">
   <header>
     <h1>😛 GOGA AND JAME TIME</h1>
     <div class="sub">Jame (singular) GOGAAAAA · Singapore 🇸🇬</div>
   </header>
+
+  <div class="timer" id="timer">⏱️ Session: 10:00</div>
 
   <div class="progress-bar"><div class="progress-fill" id="fill"></div></div>
   <div class="progress-text" id="ptext">0 done</div>
@@ -174,6 +242,101 @@
 </div>
 
 <script>
+/* ============================================================
+   PASSWORD + x-MINUTE SESSION
+   - Change the password on the next line.
+   - After unlocking, the page stays open for x minutes,
+     then locks again and asks for the password.
+   ============================================================ */
+const PASSWORD = "gogajame2026";      // 👈 change this to your secret password
+const SESSION_MINUTES = 10;
+
+(function setupLock() {
+  const lock = document.getElementById('lock');
+  const input = document.getElementById('pwInput');
+  const btn = document.getElementById('pwBtn');
+  const errEl = document.getElementById('pwError');
+  const KEY = 'gogaUnlockUntil';
+
+  function unlockedNow() {
+    const until = parseInt(localStorage.getItem(KEY) || '0', 10);
+    return Date.now() < until;
+  }
+
+  function openApp() {
+    lock.style.display = 'none';
+    document.body.classList.remove('locked');
+  }
+
+  function lockApp() {
+    if (tickTimer) clearInterval(tickTimer);
+    localStorage.removeItem(KEY);
+    lock.style.display = 'flex';
+    document.body.classList.add('locked');
+    input.value = '';
+    input.focus();
+  }
+
+  function startSession() {
+    const until = Date.now() + SESSION_MINUTES * 60 * 1000;
+    localStorage.setItem(KEY, String(until));
+    openApp();
+    scheduleLock(until);
+  }
+
+  let lockTimer = null;
+  let tickTimer = null;
+
+  function updateCountdown(until) {
+    const timerEl = document.getElementById('timer');
+    if (!timerEl) return;
+    let ms = until - Date.now();
+    if (ms < 0) ms = 0;
+    const totalSec = Math.floor(ms / 1000);
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    timerEl.textContent = '⏱️ Session: ' + m + ':' + String(s).padStart(2, '0');
+    timerEl.classList.toggle('low', totalSec <= 60);
+  }
+
+  function startTicking(until) {
+    if (tickTimer) clearInterval(tickTimer);
+    updateCountdown(until);
+    tickTimer = setInterval(() => updateCountdown(until), 1000);
+  }
+
+  function scheduleLock(until) {
+    if (lockTimer) clearTimeout(lockTimer);
+    startTicking(until);
+    const ms = until - Date.now();
+    if (ms <= 0) { lockApp(); return; }
+    lockTimer = setTimeout(lockApp, ms);
+  }
+
+  function tryUnlock() {
+    if (input.value === PASSWORD) {
+      errEl.textContent = '';
+      startSession();
+    } else {
+      errEl.textContent = 'Wrong password, try again';
+      input.value = '';
+      input.focus();
+    }
+  }
+
+  btn.addEventListener('click', tryUnlock);
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') tryUnlock(); });
+
+  // If still within an active session, skip the lock screen
+  if (unlockedNow()) {
+    const until = parseInt(localStorage.getItem(KEY), 10);
+    openApp();
+    scheduleLock(until);
+  } else {
+    input.focus();
+  }
+})();
+
 const activities = [
   {
     icon: "🎢", name: "Universal Studios Singapore", tag: "Theme Park · Sentosa",
